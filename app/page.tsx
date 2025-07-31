@@ -1,33 +1,33 @@
 'use client';
-import { MapContainer, TileLayer, useMapEvents, Marker, Popup, Circle } from 'react-leaflet';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { villes } from '../data/villes';
 import { haversineDistance } from '../utils/geo';
 import 'leaflet/dist/leaflet.css';
-import { LatLngExpression, Icon, DivIcon } from 'leaflet';
 
-const centerFrance: LatLngExpression = [46.603354, 1.888334];
 
-// Icônes personnalisées
-const userClickIcon = new DivIcon({
-  html: '<div style="background-color: #dc2626; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-  className: 'custom-div-icon',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10]
-});
-
-const correctLocationIcon = new DivIcon({
-  html: '<div style="background-color: #059669; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-  className: 'custom-div-icon',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10]
+// Import dynamique du composant Map complet
+const DynamicMap = dynamic(() => import('./MapComponent'), { 
+  ssr: false,
+  loading: () => <div style={{ 
+    height: '400px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    backgroundColor: '#f9fafb',
+    color: '#6b7280'
+  }}>
+    Chargement de la carte...
+  </div>
 });
 
 
 export default function Home() {
   const [score, setScore] = useState(0);
   const [ville, setVille] = useState(villes[0]);
-  const [clickPosition, setClickPosition] = useState<LatLngExpression | null>(null);
+  const [clickPosition, setClickPosition] = useState<[number, number] | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [lastScore, setLastScore] = useState<number>(0);
   const [message, setMessage] = useState<string>("");
@@ -58,50 +58,35 @@ export default function Home() {
     setVille(next);
   };
 
-  function MapClicker() {
-    useMapEvents({
-      click(e: any) {
-        if (showResult) return; // Empêche de cliquer pendant l'affichage du résultat
-        
-        const dist = haversineDistance(
-          e.latlng.lat, e.latlng.lng,
-          ville.lat, ville.lon
-        );
-        
-        // Système de points plus sophistiqué
-        let pts = 0;
-        let msg = "";
-        
-        if (dist < 10) {
-          pts = 1000;
-          msg = "🎯 Parfait !";
-        } else if (dist < 25) {
-          pts = 800;
-          msg = "🎯 Excellent !";
-        } else if (dist < 50) {
-          pts = 600;
-          msg = "👍 Très bien !";
-        } else if (dist < 100) {
-          pts = 400;
-          msg = "👌 Bien !";
-        } else if (dist < 200) {
-          pts = 200;
-          msg = "🤔 Pas mal...";
-        } else {
-          pts = 50;
-          msg = "😅 Oups !";
-        }
-        
-        setClickPosition([e.latlng.lat, e.latlng.lng]);
-        setDistance(dist);
-        setLastScore(pts);
-        setMessage(msg);
-        setShowResult(true);
-        setScore(score + pts);
-      },
-    });
-    return null;
-  }
+
+  const handleMapClick = (lat: number, lng: number) => {
+    if (showResult) return; // Empêche de cliquer pendant l'affichage du résultat
+    
+    const dist = haversineDistance(lat, lng, ville.lat, ville.lon);
+    
+    // Nouveau barème : 0 à 3 points
+    let pts = 0;
+    let msg = "";
+    if (dist > 200) {
+      pts = 0;
+      msg = "❌ Trop loin ! 0 point.";
+    } else if (dist > 100) {
+      pts = 1;
+      msg = "😅 Plus de 100 km : 1 point.";
+    } else if (dist > 50) {
+      pts = 2;
+      msg = "� Plus de 50 km : 2 points.";
+    } else {
+      pts = 3;
+      msg = "🎯 Moins de 50 km : 3 points !";
+    }
+    setClickPosition([lat, lng]);
+    setDistance(dist);
+    setLastScore(pts);
+    setMessage(msg);
+    setShowResult(true);
+    setScore(score + pts);
+  };
 
   return (
     <div style={{ 
@@ -251,17 +236,13 @@ export default function Home() {
             <br />
             <strong>Barème :</strong>
             <br />
-            • &lt; 10 km : 1000 pts 🎯
+            • &lt; 0 - 50 km : 3 pts 🎯
             <br />
-            • &lt; 25 km : 800 pts 
+            • &lt; 50 - 100 km : 2 pts 
             <br />
-            • &lt; 50 km : 600 pts 
+            • &lt; 100 - 200 km : 1 pts 
             <br />
-            • &lt; 100 km : 400 pts 
-            <br />
-            • &lt; 200 km : 200 pts 
-            <br />
-            • + 200 km : 50 pts 😅
+            • + 200 km : 0 pt 😅
           </div>
         )}
       </div>
@@ -275,52 +256,13 @@ export default function Home() {
         height: isMobile ? '400px' : 'auto',
         minHeight: isMobile ? '400px' : '600px'
       }}>
-        <MapContainer center={centerFrance} zoom={6} style={{ height: '100%', width: '100%' }}>
-          <TileLayer
-            attribution='&copy; CartoDB'
-            url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-          />
-          <MapClicker />
-          
-          {/* Marqueur de clic de l'utilisateur */}
-          {clickPosition && (
-            <Marker position={clickPosition} icon={userClickIcon}>
-              <Popup>
-                <div style={{ textAlign: 'center' }}>
-                  <strong>Ton clic</strong><br />
-                  🔴 Tu as cliqué ici
-                </div>
-              </Popup>
-            </Marker>
-          )}
-          
-          {/* Marqueur de la position correcte */}
-          {showResult && (
-            <Marker position={[ville.lat, ville.lon]} icon={correctLocationIcon}>
-              <Popup>
-                <div style={{ textAlign: 'center' }}>
-                  <strong>{ville.nom}</strong><br />
-                  🟢 Position correcte
-                </div>
-              </Popup>
-            </Marker>
-          )}
-          
-          {/* Ligne entre le clic et la position correcte */}
-          {showResult && clickPosition && distance && (
-            <Circle 
-              center={clickPosition} 
-              radius={distance * 1000} 
-              pathOptions={{ 
-                color: '#dc2626', 
-                fillColor: '#dc2626', 
-                fillOpacity: 0.1, 
-                weight: 2,
-                dashArray: '5, 5'
-              }} 
-            />
-          )}
-        </MapContainer>
+        <DynamicMap
+          clickPosition={clickPosition}
+          showResult={showResult}
+          ville={ville}
+          distance={distance}
+          onMapClick={handleMapClick}
+        />
       </div>
 
       {/* Guide mobile uniquement */}
