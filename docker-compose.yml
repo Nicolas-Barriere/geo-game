@@ -6,8 +6,8 @@ services:
     expose:
       - "3000"
     networks:
-      - serve
+      - shared
 
 networks:
-  serve:
+  shared:
     external: true
