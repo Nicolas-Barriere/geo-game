@@ -32,9 +32,20 @@ export default function Home() {
   const [lastScore, setLastScore] = useState<number>(0);
   const [message, setMessage] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setVille(villes[Math.floor(Math.random() * villes.length)]);
+    
+    // Vérification de la taille d'écran
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
   const nextCity = () => {
@@ -97,20 +108,27 @@ export default function Home() {
       fontFamily: 'Arial, sans-serif', 
       padding: '20px',
       display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
       gap: '20px',
       height: '100vh',
       maxHeight: '100vh'
     }}>
       {/* Panneau de gauche - Informations et contrôles */}
       <div style={{ 
-        flex: '0 0 400px',
+        flex: isMobile ? 'none' : '0 0 400px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '20px',
+        minHeight: isMobile ? 'auto' : 'unset'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <h1 style={{ color: '#2563eb', marginBottom: '10px', fontSize: '28px' }}>🇫🇷 Jeu de Géographie</h1>
-          <h2 style={{ color: '#374151', marginBottom: '20px', fontSize: '20px' }}>France</h2>
+          <h1 style={{ 
+            color: '#2563eb', 
+            marginBottom: '10px', 
+            fontSize: isMobile ? '24px' : '28px'
+          }}>
+            🇫🇷 Jeu de Géographie
+          </h1>
         </div>
 
         <div style={{
@@ -120,22 +138,39 @@ export default function Home() {
           padding: '20px',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#059669', marginBottom: '15px' }}>
+          <div style={{ 
+            fontSize: isMobile ? '20px' : '24px', 
+            fontWeight: 'bold', 
+            color: '#059669', 
+            marginBottom: '15px' 
+          }}>
             Score : {score} points
           </div>
           
           {!showResult ? (
             <>
-              <div style={{ fontSize: '16px', color: '#374151', marginBottom: '15px' }}>
+              <div style={{ 
+                fontSize: isMobile ? '14px' : '16px', 
+                color: '#374151', 
+                marginBottom: '15px' 
+              }}>
                 Cliquez sur la carte à l'endroit où vous pensez que se trouve :
               </div>
-              <h3 style={{ color: '#dc2626', margin: '0', fontSize: '32px', fontWeight: 'bold' }}>
+              <h3 style={{ 
+                color: '#dc2626', 
+                margin: '0', 
+                fontSize: isMobile ? '28px' : '32px', 
+                fontWeight: 'bold' 
+              }}>
                 {ville.nom}
               </h3>
             </>
           ) : (
-            <div style={{ fontSize: '16px', color: '#6366f1' }}>
-              Résultat affiché sur la carte →
+            <div style={{ 
+              fontSize: isMobile ? '14px' : '16px', 
+              color: '#6366f1' 
+            }}>
+              Résultat affiché sur la carte {isMobile ? '↓' : '→'}
             </div>
           )}
         </div>
@@ -146,18 +181,37 @@ export default function Home() {
             backgroundColor: '#f3f4f6',
             border: '2px solid #e5e7eb',
             borderRadius: '8px',
-            padding: '20px',
+            padding: isMobile ? '15px' : '20px',
             textAlign: 'center',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ fontSize: '28px', marginBottom: '15px' }}>{message}</div>
-            <div style={{ fontSize: '18px', color: '#374151', marginBottom: '10px' }}>
+            <div style={{ 
+              fontSize: isMobile ? '24px' : '28px', 
+              marginBottom: '15px' 
+            }}>
+              {message}
+            </div>
+            <div style={{ 
+              fontSize: isMobile ? '16px' : '18px', 
+              color: '#374151', 
+              marginBottom: '10px' 
+            }}>
               Tu étais à <strong>{distance?.toFixed(1)} km</strong> de
             </div>
-            <div style={{ fontSize: '24px', color: '#dc2626', fontWeight: 'bold', marginBottom: '10px' }}>
+            <div style={{ 
+              fontSize: isMobile ? '20px' : '24px', 
+              color: '#dc2626', 
+              fontWeight: 'bold', 
+              marginBottom: '10px' 
+            }}>
               {ville.nom}
             </div>
-            <div style={{ fontSize: '20px', color: '#059669', fontWeight: 'bold', marginBottom: '20px' }}>
+            <div style={{ 
+              fontSize: isMobile ? '18px' : '20px', 
+              color: '#059669', 
+              fontWeight: 'bold', 
+              marginBottom: '20px' 
+            }}>
               +{lastScore} points !
             </div>
             <button
@@ -167,8 +221,8 @@ export default function Home() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                padding: '15px 30px',
-                fontSize: '18px',
+                padding: isMobile ? '12px 20px' : '15px 30px',
+                fontSize: isMobile ? '16px' : '18px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s',
@@ -182,7 +236,7 @@ export default function Home() {
           </div>
         )}
 
-        {!showResult && (
+        {!showResult && !isMobile && (
           <div style={{
             backgroundColor: '#eff6ff',
             border: '1px solid #dbeafe',
@@ -214,11 +268,12 @@ export default function Home() {
 
       {/* Panneau de droite - Carte */}
       <div style={{ 
-        flex: '1',
+        flex: isMobile ? 'none' : '1',
         border: '2px solid #e5e7eb', 
         borderRadius: '8px', 
         overflow: 'hidden',
-        minHeight: '600px'
+        height: isMobile ? '400px' : 'auto',
+        minHeight: isMobile ? '400px' : '600px'
       }}>
         <MapContainer center={centerFrance} zoom={6} style={{ height: '100%', width: '100%' }}>
           <TileLayer
@@ -267,6 +322,21 @@ export default function Home() {
           )}
         </MapContainer>
       </div>
+
+      {/* Guide mobile uniquement */}
+      {!showResult && isMobile && (
+        <div style={{
+          backgroundColor: '#eff6ff',
+          border: '1px solid #dbeafe',
+          borderRadius: '6px',
+          padding: '10px',
+          fontSize: '12px',
+          color: '#1e40af',
+          textAlign: 'center'
+        }}>
+          💡 Plus vous cliquez près de la ville, plus vous gagnez de points !
+        </div>
+      )}
     </div>
   );
 }
