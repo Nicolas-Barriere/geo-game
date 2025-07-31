@@ -1,0 +1,13 @@
+services:
+  france-frontend:
+    build: .
+    container_name: france-frontend
+    restart: always
+    expose:
+      - "3000"
+    networks:
+      - serve
+
+networks:
+  serve:
+    external: true
