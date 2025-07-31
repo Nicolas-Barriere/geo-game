@@ -226,7 +226,7 @@ export default function Home() {
             Manche : <b>{currentRound}</b> / {numRounds}
           </div>
           <div style={{ fontSize: isMobile ? '14px' : '16px', color: '#374151', marginBottom: '15px' }}>
-            Cliquez sur la carte à l'endroit où vous pensez que se trouve :
+            Cliquez sur la carte à l&apos;endroit où vous pensez que se trouve :
           </div>
           <h3 style={{ color: '#dc2626', margin: '0', fontSize: isMobile ? '28px' : '32px', fontWeight: 'bold' }}>
             {ville.nom}

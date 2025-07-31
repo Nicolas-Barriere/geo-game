@@ -26,9 +26,11 @@ interface MapComponentProps {
   onMapClick: (lat: number, lng: number) => void;
 }
 
+import { LeafletMouseEvent } from 'leaflet';
+
 function MapClicker({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
-    click(e: any) {
+    click(e: LeafletMouseEvent) {
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
