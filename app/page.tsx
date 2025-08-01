@@ -278,18 +278,14 @@ export default function Home() {
             textAlign: 'center',
             marginTop: 8
           }}>
-            💡 Plus vous cliquez près de la ville, plus vous gagnez de points !
+            💡 À chaque tour, tous les joueurs cherchent la même ville.
             <br />
             <br />
-            <strong>Barème :</strong>
+            <strong>Nouveau système de points :</strong>
             <br />
-            • 0 - 50 km : 3 pts 🎯
+            • À chaque tour, la distance (en km) entre votre clic et la ville est ajoutée à votre score.
             <br />
-            • 50 - 100 km : 2 pts 
-            <br />
-            • 100 - 200 km : 1 pt
-            <br />
-            • + 200 km : 0 pt 😅
+            • À la fin de la partie, le joueur avec le plus petit total de kilomètres gagne ! 🏆
           </div>
         )}
       </div>
