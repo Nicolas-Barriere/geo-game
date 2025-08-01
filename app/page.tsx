@@ -36,19 +36,16 @@ export default function Home() {
   const [numRounds, setNumRounds] = useState(5); // nombre de tours sélectionné
   const [currentRound, setCurrentRound] = useState(1); // round actuel (1-based)
   const [difficulty, setDifficulty] = useState<'simple' | 'medium' | 'hard'>('simple');
-  const [ville, setVille] = useState(villes['simple'][0]);
-  const [clickPosition, setClickPosition] = useState<[number, number] | null>(null);
-  const [distance, setDistance] = useState<number | null>(null);
-  const [lastScore, setLastScore] = useState<number>(0);
+  const [villesPartie, setVillesPartie] = useState<{ nom: string; lat: number; lon: number }[]>([]); // villes uniques pour la partie
+  const [ville, setVille] = useState<{ nom: string; lat: number; lon: number } | null>(null);
+  const [clicks, setClicks] = useState<{ [playerIdx: number]: [number, number] | null }>({});
+  const [distances, setDistances] = useState<{ [playerIdx: number]: number }>({});
   const [message, setMessage] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
-    // Sélectionne une ville aléatoire dans la catégorie de difficulté
-    const villesCat = villes[difficulty];
-    setVille(villesCat[Math.floor(Math.random() * villesCat.length)]);
     // Vérification de la taille d'écran
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -56,7 +53,7 @@ export default function Home() {
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
     return () => window.removeEventListener('resize', checkIsMobile);
-  }, [difficulty]);
+  }, []);
 
   const startGame = () => {
     const enteredPlayers = playerInputs.slice(0, numPlayers).map(name => ({ name: name.trim() || "Joueur", score: 0 }));
@@ -65,66 +62,49 @@ export default function Home() {
     setCurrentRound(1);
     setSetup(false);
     setShowResult(false);
-    setClickPosition(null);
-    setDistance(null);
-    setLastScore(0);
     setMessage("");
     setGameOver(false);
-    // Sélectionne une ville aléatoire dans la catégorie de difficulté
-    const villesCat = villes[difficulty];
-    setVille(villesCat[Math.floor(Math.random() * villesCat.length)]);
+    setClicks({});
+    setDistances({});
+    // Génère la liste de villes uniques pour la partie
+    const villesCat = [...villes[difficulty]];
+    const villesMelangees = villesCat.sort(() => Math.random() - 0.5).slice(0, numRounds);
+    setVillesPartie(villesMelangees);
+    setVille(villesMelangees[0]);
   };
 
   const nextCity = () => {
-    // Si dernier tour et dernier joueur, fin de partie
-    if (currentPlayerIdx === players.length - 1 && currentRound === numRounds) {
-      setGameOver(true);
-      setShowResult(false);
-      return;
-    }
-    setShowResult(false);
-    setClickPosition(null);
-    setDistance(null);
-    setLastScore(0);
-    setMessage("");
-    // Sélectionne une ville aléatoire dans la catégorie de difficulté
-    const villesCat = villes[difficulty];
-    setVille(villesCat[Math.floor(Math.random() * villesCat.length)]);
-    if (players.length > 0) {
-      if (currentPlayerIdx === players.length - 1) {
-        setCurrentPlayerIdx(0);
-        setCurrentRound((r) => r + 1);
-      } else {
-        setCurrentPlayerIdx((prev) => prev + 1);
+    // Si tous les joueurs ont joué sur la ville courante
+    if (currentPlayerIdx === players.length - 1) {
+      if (currentRound === numRounds) {
+        setGameOver(true);
+        setShowResult(false);
+        return;
       }
+      setCurrentPlayerIdx(0);
+      setCurrentRound((r) => r + 1);
+      setVille(villesPartie[currentRound]);
+      setClicks({});
+      setDistances({});
+      setShowResult(false);
+      setMessage("");
+    } else {
+      setCurrentPlayerIdx((prev) => prev + 1);
+      setShowResult(false);
+      setMessage("");
     }
   };
 
   const handleMapClick = (lat: number, lng: number) => {
     if (showResult) return;
+    if (!ville) return;
     const dist = haversineDistance(lat, lng, ville.lat, ville.lon);
-    let pts = 0;
-    let msg = "";
-    if (dist > 200) {
-      pts = 0;
-      msg = "❌ Trop loin ! 0 point.";
-    } else if (dist > 100) {
-      pts = 1;
-      msg = "😅 Plus de 100 km : 1 point.";
-    } else if (dist > 50) {
-      pts = 2;
-      msg = "👌 Plus de 50 km : 2 points.";
-    } else {
-      pts = 3;
-      msg = "🎯 Moins de 50 km : 3 points !";
-    }
-    setClickPosition([lat, lng]);
-    setDistance(dist);
-    setLastScore(pts);
-    setMessage(msg);
+    setClicks(prev => ({ ...prev, [currentPlayerIdx]: [lat, lng] }));
+    setDistances(prev => ({ ...prev, [currentPlayerIdx]: dist }));
+    setMessage(`Distance : ${dist.toFixed(1)} km`);
     setShowResult(true);
-    // Ajout des points au joueur courant
-    setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIdx ? { ...p, score: p.score + pts } : p));
+    // Ajout du score (km) au joueur courant
+    setPlayers(prev => prev.map((p, idx) => idx === currentPlayerIdx ? { ...p, score: p.score + dist } : p));
   };
 
   if (setup) {
@@ -164,15 +144,15 @@ export default function Home() {
 
   if (gameOver) {
     // Affichage de fin de partie
-    const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+    const sortedPlayers = [...players].sort((a, b) => a.score - b.score); // score = km, le plus petit gagne
     return (
       <div style={{ maxWidth: 500, margin: '40px auto', padding: 32, background: '#f9fafb', borderRadius: 16, border: '2px solid #e5e7eb', boxShadow: '0 2px 12px #0002', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
         <h1 style={{ color: '#059669', marginBottom: 24 }}>🎉 Fin de la partie !</h1>
-        <h2 style={{ color: '#2563eb', marginBottom: 16 }}>Classement final :</h2>
+        <h2 style={{ color: '#2563eb', marginBottom: 16 }}>Classement final (total km) :</h2>
         <ol style={{ textAlign: 'left', margin: '0 auto 24px', paddingLeft: 32, maxWidth: 300 }}>
           {sortedPlayers.map((p, i) => (
             <li key={i} style={{ color: i === 0 ? '#059669' : '#374151', fontWeight: i === 0 ? 'bold' : 'normal', fontSize: i === 0 ? 20 : 16 }}>
-              {p.name} : {p.score} pt{p.score > 1 ? 's' : ''}
+              {p.name} : {Math.round(p.score)} km
             </li>
           ))}
         </ol>
@@ -220,7 +200,7 @@ export default function Home() {
             <b>Tour de :</b> <span style={{ color: '#2563eb' }}>{currentPlayer?.name}</span>
           </div>
           <div style={{ fontSize: isMobile ? '16px' : '18px', color: '#059669', marginBottom: 8 }}>
-            Score : <b>{currentPlayer?.score}</b> point{currentPlayer?.score > 1 ? 's' : ''}
+            Total km : <b>{Math.round(currentPlayer?.score)}</b>
           </div>
           <div style={{ fontSize: isMobile ? '14px' : '16px', color: '#374151', marginBottom: '8px' }}>
             Manche : <b>{currentRound}</b> / {numRounds}
@@ -229,7 +209,7 @@ export default function Home() {
             Cliquez sur la carte à l&apos;endroit où vous pensez que se trouve :
           </div>
           <h3 style={{ color: '#dc2626', margin: '0', fontSize: isMobile ? '28px' : '32px', fontWeight: 'bold' }}>
-            {ville.nom}
+            {ville ? ville.nom : ''}
           </h3>
         </div>
 
@@ -245,14 +225,12 @@ export default function Home() {
           }}>
             <div style={{ fontSize: isMobile ? '24px' : '28px', marginBottom: '15px' }}>{message}</div>
             <div style={{ fontSize: isMobile ? '16px' : '18px', color: '#374151', marginBottom: '10px' }}>
-              Tu étais à <strong>{distance?.toFixed(1)} km</strong> de
+              Tu étais à <strong>{distances[currentPlayerIdx]?.toFixed(1)} km</strong> de
             </div>
             <div style={{ fontSize: isMobile ? '20px' : '24px', color: '#dc2626', fontWeight: 'bold', marginBottom: '10px' }}>
-              {ville.nom}
+              {ville ? ville.nom : ''}
             </div>
-            <div style={{ fontSize: isMobile ? '18px' : '20px', color: '#059669', fontWeight: 'bold', marginBottom: '20px' }}>
-              +{lastScore} point{lastScore > 1 ? 's' : ''} !
-            </div>
+            {/* On n'affiche plus de points, juste la distance */}
             {!gameOver && (
               <button
                 onClick={nextCity}
@@ -326,10 +304,10 @@ export default function Home() {
         minHeight: isMobile ? '400px' : '600px'
       }}>
         <DynamicMap
-          clickPosition={clickPosition}
+          clickPosition={clicks[currentPlayerIdx]}
           showResult={showResult}
-          ville={ville}
-          distance={distance}
+          ville={ville ? ville : { nom: '', lat: 0, lon: 0 }}
+          distance={distances[currentPlayerIdx]}
           onMapClick={handleMapClick}
         />
       </div>
